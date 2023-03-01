@@ -1,7 +1,7 @@
 const fs = require('fs');
 const utils = require('../utils')
-
-const {createProducts,createTagMetaData} = require('../../database/create/createProducts.js')
+const db = require('../database/database.js')
+const {createProducts,createTagMetaData} = require('../database/CRUD/create.js')
 
 const LOG_FILE_NAME  = 'inventory'
 
@@ -21,8 +21,9 @@ module.exports = ( () => {
 
     log.info("************ files: "+ inventories_dir.map(f => `${getFileName(f)}.json`).join(',') + "********************")
 
-    const normalized_products = []
+    const normalized_products = [] // list which contains the objects which get written to db
 
+    // init metrics for categories/stores/brands for logging
     const pbm = utils.initProductBucketMetrics(log)
     const _pbm = utils.initProductBucketMetrics(log)
     const __pbm = utils.initProductBucketMetrics(log)
@@ -33,10 +34,10 @@ module.exports = ( () => {
         log.info("/////////////////////////////"+ getFileName(file)+ "///////////////////////////////////////")
 
         products.forEach( (p) => {
-            pbm.putProductBuckets([p.buckets[0]], p)            //add the first element of the buckets arr to bucket
-            p.brand && _pbm.putProductBuckets([p.brand], p)     //add the brand to bucket
+            pbm.putProductBuckets([p.buckets[0]], p)            //add the **first element** of the buckets arr to bucket; every product may only belong to a single bucket
+            p.brand && _pbm.putProductBuckets([p.brand], p)     //add the brand to bucket, if product contains a brand
             __pbm.putProductBuckets([getFileName(file)], p)     //add the store to bucket
-            normalized_products.push(normalize(p, [p.buckets[0]], getFileName(file)))
+            normalized_products.push(normalize(p, [p.buckets[0]], getFileName(file)))  //format objct to confirm to mongodb Product schema
         })  
     })
 
@@ -44,32 +45,14 @@ module.exports = ( () => {
     _pbm.printProductBuckets(false, 'brands')
     __pbm.printProductBuckets(false, 'stores')
 
-    const tag_mds = []
+    const tag_mds = [] // list of compound objects containing categories,brands,stores names and num of products for each
 
     tag_mds.push(pbm.generateTagMetaData("CATEGORIES"))
-    tag_mds.push(_pbm.generateTagMetaData("BRANDS"))
+    tag_mds.push(_pbm.generateTagMetaData("BRANDS"))    
     tag_mds.push(__pbm.generateTagMetaData("STORES"))
 
-/*
-  
-    createTagMetaData(tag_mds).then((db_result)=>{
-        log.info("INSERTED " + db_result.length + " RECORDS INTO TAGMETADATA COLLECTION")
-    }).catch((err)=>{
-        log.error("err from database")
-        console.log(err)
-        log.error(err)
-    })  
-*/
- 
-    createProducts(normalized_products).then((db_result)=>{
-        log.info("INSERTED " + db_result.length + " RECORDS INTO PRODUCTS COLLECTION")
-    }).catch((err)=>{
-        log.error("err from database")
-        console.log(err)
-        log.error(err)
-    })  
- 
-     
+    writeDB(normalized_products, tag_mds)
+   
 })()
 
 function normalize(product, categories, source){
@@ -89,6 +72,23 @@ function normalize(product, categories, source){
             category_str:       product.category           
         }
     }  
+}
+
+async function writeDB(products, tag_mds){
+
+    try {
+        await db.connect();
+        console.log("Connected correctly to server");
+        const product_result = await createProducts(products)
+        console.log("inserted products: ", product_result.length)
+        const tag_md_result = await createTagMetaData(tag_mds)
+        console.log("inserted tag_md: ", tag_md_result.length)     
+    } catch (err) {
+        console.log(err.stack);
+    }
+    finally {
+      await db.disconnect();
+    } 
 }
 
 

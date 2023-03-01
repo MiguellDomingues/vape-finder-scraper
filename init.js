@@ -259,15 +259,75 @@ const ezvapes_config = {
 
 
 
+
 Promise.all([
       //require("./scripts/ezvape")(ezvapes_config), 
       //require("./scripts/thunderbirdvapes")(tbvapes_config),
      // require("./scripts/surreyvapes")(surreyvapes_config)
-    ]).then( () => {
+  ]).then( () => {
       require("./scripts/inventory")
-    })
+  })
+
+  //mongodb+srv://mdomingues1001:<password>@cluster0.wp71sxq.mongodb.net/?retryWrites=true&w=majority
+
+  /*
+const USERNAME = 'mdomingues1001'
+const PASSWORD = '0CKYslzcFlvxkTrN'
+const CLUSTER = 'cluster0.wp71sxq.mongodb.net'
+
+//const DATABASE_DOMAIN   = 'mdomingues1001:0CKYslzcFlvxkTrN@cluster0.wp71sxq.mongodb.net'    
+const DATABASE_NAME     = 'vape-finder';
+const PARAMS = '?retryWrites=true&w=majority'
+
+const DATABASE_URI      = `mongodb+srv://${USERNAME}:${PASSWORD}@${CLUSTER}/${DATABASE_NAME}${PARAMS}`
+
+const { Product } = require('./database/models.js');
+
+let mongoose = require('mongoose');
+mongoose.set('strictQuery', true);
 
 
+ const products = [
+  {
+  source:"ezvape",
+source_id:"2525",
+source_url:"https://ezvape.com",
+last_updated:"2023-02-14",
+categories:["Replacement Glass"],
+product_info:{
+  name:"TFV8 Baby Replacement Glass",
+  img_src:"https://ezvape.com/wp-content/uploads/2021/02/smok-tfv8-baby-replace",
+  info_url:"https://ezvape.com/product/tfv8-baby-replacement-glass/",
+  price:4.99,
+  brand:"Smok",
+  category_str:"Tanks & Rebuildables,Replacement Glass",}
+ }
+]
+
+async function con(){
+
+  
+  try {
+    await mongoose.connect(DATABASE_URI);
+    console.log("Connected correctly to server");
+    const result = await Product.insertMany(products)
+    console.log("inserted: ", result)
+    
+} catch (err) {
+    console.log(err.stack);
+}
+finally {
+  await mongoose.connection.close();
+}
+
+
+
+}
+
+  
+//con()
+
+*/
 
     
 
