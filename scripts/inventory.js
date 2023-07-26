@@ -2,6 +2,8 @@ const fs = require('fs');
 const utils = require('../utils')
 const db = require('../database/database.js')
 const {createProducts,createTagMetaData} = require('../database/CRUD/create.js')
+const {deleteProducts,deleteTagMetaData} = require('../database/CRUD/delete.js')
+const { Product } = require('../database/models.js')
 
 const LOG_FILE_NAME  = 'inventory'
 
@@ -14,75 +16,95 @@ module.exports = ( () => {
     const getFileName = file => file.split('.')[0]
     const inventories_dir = fs.readdirSync(utils.INVENTORIES_DIR);
 
-    if(inventories_dir.length < 1){
+    if(inventories_dir.length < 1){ //if the inventories/ folder has no files, exit
         log.error(utils.INVENTORIES_DIR+ " has no files. aborting")
         return
     }
 
     log.info("************ files: "+ inventories_dir.map(f => `${getFileName(f)}.json`).join(',') + "********************")
 
-    const normalized_products = [] // list which contains the objects which get written to db
+    const normalized_products = [] // list of objects that are ready for writing to products collection
 
-    // init metrics for categories/stores/brands for logging
-    const pbm = utils.initProductBucketMetrics(log)
-    const _pbm = utils.initProductBucketMetrics(log)
-    const __pbm = utils.initProductBucketMetrics(log)
+    // init buckets to generate tagmetadatas collection for categories/brands/stores
+    const categories_pbm = utils.initProductBucketMetrics(log)
+    const brands_pbm = utils.initProductBucketMetrics(log)
+    const stores_pbm = utils.initProductBucketMetrics(log)
 
-    inventories_dir.forEach( (file)=>{
+    inventories_dir.forEach( (file)=>{ //for each JSON file in the /inventories directory
         
-        const products = utils.readJSON(utils.INVENTORIES_DIR, getFileName(file), log)
+        const products = utils.readJSON(utils.INVENTORIES_DIR, getFileName(file), log) 
         log.info("/////////////////////////////"+ getFileName(file)+ "///////////////////////////////////////")
 
         products.forEach( (p) => {
-            pbm.putProductBuckets([p.buckets[0]], p)            //add the **first element** of the buckets arr to bucket; every product may only belong to a single bucket
-            p.brand && _pbm.putProductBuckets([p.brand], p)     //add the brand to bucket, if product contains a brand
-            __pbm.putProductBuckets([getFileName(file)], p)     //add the store to bucket
-            normalized_products.push(normalize(p, [p.buckets[0]], getFileName(file)))  //format objct to confirm to mongodb Product schema
+            //generate
+            categories_pbm.putProductBuckets([p.buckets[0]], p)            //add the **first element** of the buckets arr to bucket; every product may only belong to a single bucket
+            p.brand && brands_pbm.putProductBuckets([p.brand], p)     //add the brand to bucket, if product contains a brand
+            stores_pbm.putProductBuckets([getFileName(file)], p)     //add the e-store/source to bucket
+            normalized_products.push(normalize(p, [p.buckets[0]], getFileName(file)))  //format objct to confirm to mongodb Product schema and add to list
         })  
     })
 
-    pbm.printProductBuckets()
-    _pbm.printProductBuckets(false, 'brands')
-    __pbm.printProductBuckets(false, 'stores')
+    categories_pbm.printProductBuckets(false, 'categories')
+    brands_pbm.printProductBuckets(false, 'brands')
+    stores_pbm.printProductBuckets(false, 'stores')
 
     const tag_mds = [] // list of compound objects containing categories,brands,stores names and num of products for each
 
-    tag_mds.push(pbm.generateTagMetaData("CATEGORIES"))
-    tag_mds.push(_pbm.generateTagMetaData("BRANDS"))    
-    tag_mds.push(__pbm.generateTagMetaData("STORES"))
+    tag_mds.push(categories_pbm.generateTagMetaData("CATEGORIES"))
+    tag_mds.push(brands_pbm.generateTagMetaData("BRANDS"))    
+    tag_mds.push(stores_pbm.generateTagMetaData("STORES"))
 
-    writeDB(normalized_products, tag_mds)
+    //writeDB(normalized_products, tag_mds)
    
 })()
 
+/*
+ map product object to a mongo document object that matches the Product schema
+ input:
+    product:    the original product object
+    categories: arr of category string tags
+    source:     the name of the e-store the product was scraped from
+return:
+    a normalized object ready for insertion into the products collection
+*/
 function normalize(product, categories, source){
 
+    //const docs = await Model.find().lean();
+    //return {_id: "..", categories: ["..."], brand: ""}
+    // keys_1 = Object.keys(docs)
+
+    //write to csv and input into google drive, file name is date
+
     return {
-        source:         source,
-        source_id:      product.id,                 
-        source_url:     `https://${source}.com`,    
-        last_updated:   new Date().toISOString().slice(0, 10),
-        categories:     [...categories],
-        product_info:{
-            name:               product.name,      
-            info_url:           product.src,         
-            img_src:            product.img,                //TODO: need a process that fetches product images and saves them locally
-            price:              product.price,              
-            brand:              product.brand,              
-            category_str:       product.category           
-        }
+        source:         source,                                 
+        source_id:      product.id,                             //the products ID scraped from the e-store                     
+        source_url:     `https://${source}.com`,                //the URL of the e-store the product was scraped from (as is, this is redundent)
+        last_updated:   new Date().toISOString().slice(0, 10),  //todays date
+        categories:     [...categories],                        //the tags that give the product visibility in Category searches
+        name:            product.name,                          //name of the product 
+        info_url:        product.src,                           //product URL on the source e-store
+        img_src:         product.img,                           //direct product image source TODO: need a process that fetches product images and saves them locally
+        price:           product.price,                         //product price
+        brand:           product.brand,                         //the tag that gives the product visibility in Brand searches
+        category_str:    product.category                       //the category info that the product was originally scraped with
     }  
 }
 
 async function writeDB(products, tag_mds){
+//save new items to JSON before proceeding
 
     try {
-        await db.connect();
-        console.log("Connected correctly to server");
+        await db.connect();  
+        console.log("Connected correctly to server"); 
+        await deleteProducts()
+        await deleteTagMetaData()
+        console.log("deleted previous collections"); 
         const product_result = await createProducts(products)
         console.log("inserted products: ", product_result.length)
         const tag_md_result = await createTagMetaData(tag_mds)
-        console.log("inserted tag_md: ", tag_md_result.length)     
+        console.log("inserted tag_md: ", tag_md_result.length)
+
+       
     } catch (err) {
         console.log(err.stack);
     }
@@ -90,6 +112,67 @@ async function writeDB(products, tag_mds){
       await db.disconnect();
     } 
 }
+
+
+
+/*
+async function testingSortedPagination(){
+
+    const limit = 20
+
+        const search_params = {
+            category:["Juices"],
+            stores:[], 
+            brands:[]
+        }
+     
+        const sort_params = {
+            sort_by:"DESC", //DESC
+            Last_sorted_price: 26.99, 
+            last_product_id: ["6404e3db900638a2ed04d6d6","6404e3db900638a2ed04d6d7",
+            "6404e3db900638a2ed04d6e5","6404e3db900638a2ed04d6ef",
+            "6404e3db900638a2ed04d705","6404e3db900638a2ed04d705","6404e3db900638a2ed04d708","6404e3db900638a2ed04d70b","6404e3db900638a2ed04d70c","6404e3db900638a2ed04d715"
+
+        ]
+        }
+
+        const {query_str, sort_str} = buildQuery(search_params, sort_params )
+        console.log(query_str)
+        console.log(sort_str)
+        const res = await fetchSortedProductsByCategoryBrandStore(query_str, sort_str, limit)
+        console.log(res)
+}
+
+
+//i need to update this
+function buildQuery( {category, stores, brands}, {sort_by, Last_sorted_price, last_product_id} ){
+
+    const query_str = {}
+  
+    if(Last_sorted_price) query_str["price"] = sort_by === "ASC" ? { "$gte" : Last_sorted_price } : { "$lte" : Last_sorted_price }
+    //if(last_product_id?.length > 0)     query_str["_id"] = { "$gt" : last_product_id }
+    if(last_product_id?.length > 0)     query_str["_id"] = { "$nin" : [...last_product_id] }
+    if(category.length > 0) query_str["categories"] = { "$in" : category }
+    if(stores.length > 0)   query_str["source"] = { "$in" : stores}
+    if(brands.length > 0)   query_str["brand"] = { "$in" : brands }
+
+    const sort_str = {}
+
+    sort_str["price"] = sort_by === "ASC" ? 1 : -1
+    sort_str["_id"] = 1
+    
+    return { query_str, sort_str }
+  }
+
+async function fetchSortedProductsByCategoryBrandStore( query_str,sort_str, limit) {   
+    return new Promise( (resolve, reject) => {       
+        Product.find(query_str, { _id: 1, price: 1 } ).sort(sort_str).limit(limit)
+            .then( (products) => { resolve(products)} )
+            .catch( (err) =>  { reject(new Error("Query Error", { cause: err })) } )
+    })  
+ }
+
+ */
 
 
 

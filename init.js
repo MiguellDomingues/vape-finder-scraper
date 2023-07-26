@@ -72,6 +72,7 @@ TODO:
 */
 
 const tbvapes_config = {
+  //PLATFORM: SHOPIFY
    domain:              'https://www.thunderbirdvapes.com',
    data_dir:            'thunderbirdvapes',
    raw_products_file:   'products',
@@ -122,10 +123,11 @@ const tbvapes_config = {
     ],
     utils:                      require("./utils.js"),
     execute_scrape:             false,
-    execute_inventory:          false
+    execute_inventory:          true
 }
 
 const surreyvapes_config = {
+  //PLATFORM: BIGCOMMERCE
   domain:              'https://www.surreyvapes.com',
   data_dir:            'surreyvapes',
   raw_products_file:   'raw_products',
@@ -177,17 +179,20 @@ const surreyvapes_config = {
 ],
    utils:                      require("./utils.js"),
    execute_scrape:             false,
-   execute_inventory:          false
+   execute_inventory:          true
 }
 
 const ezvapes_config = {
+  //domain_platform: woo-commerce
   domain:                    'https://ezvape.com',
   data_dir:                  'ezvape',
   log_file:                  'ezvape',
   utils:                     require("./utils.js"),
 
+  //subscrapes
   fetch_products:{
     raw_products_file:        'raw_products',
+    //
     exec_scrape:   false,
   },
   
@@ -204,9 +209,11 @@ const ezvapes_config = {
     categories_subdir:    'categories',
     exec_scrape: false,
   },
+  ////////////////
 
   write_inventory:{
     inventory_file:           'ezvape',
+    //move buckets to another file
     buckets: [
       {
           name: 'Juices',
@@ -216,7 +223,7 @@ const ezvapes_config = {
       },
       {
           name: 'Coils',
-          synonyms: ['coil','rda','atomizer','RPM 40 Pod','Ego 1 Coil 1.0 Ohm 5/Pk','Metal RDA Stand','Crown 5 Coil']
+          synonyms: ['coil','rda','atomizer','RPM 40 Pod','Ego 1 Coil 1.0 Ohm 5/Pk','Metal RDA Stand','Crown 5 Coil','Notch Coil SS316L 0.35 ohm 10/Pk']
       },
       {
           name: 'Pods',
@@ -248,88 +255,36 @@ const ezvapes_config = {
       },
       {
           name: 'Accessories/Miscellaneous',
-          synonyms: ['wire','drip tip','cotton','apparel','mod accessories','pens','wick','adapter',
+          synonyms: ['wire','drip tip','cotton','apparel','mod accessories','pens','wick','adapter', '30 mL Unicorn Bottle',
           'screwdriver','tweezer','decorative ring','magnet connector','vaper twizer','diy tool kit','Clapton Coil Building Kit','Zipper Storage Bag','Mouthpiece Glass']
       },      
   ],
-    exec_inventory:         false,
+    exec_inventory:         true,
   },
 }
 
 
-
-
+//I HAVE AN API TO AN VPN
+// CAN I GET A NEW IP FOR EVERY SCRAPE?
+// CAN I PUT THE IMPORTS ONTO A LIST AND LOOP THE LIST, MAKING EACH A PROMISE?
+/*
+- STORE EACH IMPORT INTO A LIST AS AN INSTANCE:
+const l = [
+ 
+]
+*/
+//console.log("asdasdasds")
 
 Promise.all([
-      //require("./scripts/ezvape")(ezvapes_config), 
+  //READ_CATALOG.EZVAPE
+     // require("./scripts/ezvape")(ezvapes_config), 
       //require("./scripts/thunderbirdvapes")(tbvapes_config),
-     // require("./scripts/surreyvapes")(surreyvapes_config)
+      // require("./scripts/surreyvapes")(surreyvapes_config)
   ]).then( () => {
+    //PROCESS_AND_TRANSMIT_CATALOG
       require("./scripts/inventory")
   })
 
-  //mongodb+srv://mdomingues1001:<password>@cluster0.wp71sxq.mongodb.net/?retryWrites=true&w=majority
-
-  /*
-const USERNAME = 'mdomingues1001'
-const PASSWORD = '0CKYslzcFlvxkTrN'
-const CLUSTER = 'cluster0.wp71sxq.mongodb.net'
-
-//const DATABASE_DOMAIN   = 'mdomingues1001:0CKYslzcFlvxkTrN@cluster0.wp71sxq.mongodb.net'    
-const DATABASE_NAME     = 'vape-finder';
-const PARAMS = '?retryWrites=true&w=majority'
-
-const DATABASE_URI      = `mongodb+srv://${USERNAME}:${PASSWORD}@${CLUSTER}/${DATABASE_NAME}${PARAMS}`
-
-const { Product } = require('./database/models.js');
-
-let mongoose = require('mongoose');
-mongoose.set('strictQuery', true);
-
-
- const products = [
-  {
-  source:"ezvape",
-source_id:"2525",
-source_url:"https://ezvape.com",
-last_updated:"2023-02-14",
-categories:["Replacement Glass"],
-product_info:{
-  name:"TFV8 Baby Replacement Glass",
-  img_src:"https://ezvape.com/wp-content/uploads/2021/02/smok-tfv8-baby-replace",
-  info_url:"https://ezvape.com/product/tfv8-baby-replacement-glass/",
-  price:4.99,
-  brand:"Smok",
-  category_str:"Tanks & Rebuildables,Replacement Glass",}
- }
-]
-
-async function con(){
-
-  
-  try {
-    await mongoose.connect(DATABASE_URI);
-    console.log("Connected correctly to server");
-    const result = await Product.insertMany(products)
-    console.log("inserted: ", result)
-    
-} catch (err) {
-    console.log(err.stack);
-}
-finally {
-  await mongoose.connection.close();
-}
-
-
-
-}
-
-  
-//con()
-
-*/
-
-    
 
   
 

@@ -19,15 +19,13 @@ const productSchema = new mongoose.Schema({
     source_url:     { type: String, required: true },
     last_updated:   { type: String, required: true },
     categories:     { type: [String], enum: Object.values(BUCKETS) },
+    price:          { type: Number, required: true },
+    name:           { type: String, required: true },
+    img_src:          String,
+    info_url:       { type: String, required: true },
+    brand:            String,
+    category_str:   { type: String, required: true },
 
-    product_info:{
-        name:               { type: String, required: true },
-        img_src:            String,
-        info_url:           { type: String, required: true },
-        price:              { type: Number, required: true },
-        brand:              String,
-        category_str:           { type: String, required: true },   
-    } 
 });
 
 const tagMetaData = new mongoose.Schema({

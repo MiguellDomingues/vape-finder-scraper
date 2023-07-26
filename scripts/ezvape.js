@@ -28,7 +28,12 @@ module.exports = (config) => {
 
         try{
             
-            ///////////////////stage 1////////////////////////////////// scrape the product id/img/price/name without category/brands; scrape the category/brand links
+            /* /////////////////stage 1//////////////////////
+                a) scrape the product id/img/price/names of all products from a single endpoint
+                b) scrape the category subdomain links off the sidebar (PRODUCT CATEGORIES)
+                c) scrape the brand subdomain links off the sidebar (FILTER BY MANUFACTURER)
+                d) write results to files (overwrites existing)
+            */
             const { products, brands, categories } = await (async function(){
                 if(fetch_products.exec_scrape){
 
@@ -39,7 +44,7 @@ module.exports = (config) => {
                     return {products, brands, categories }
                 }
 
-               const products = utils.readJSON(_data_dir, fetch_products.raw_products_file, log)
+                const products = utils.readJSON(_data_dir, fetch_products.raw_products_file, log)
                 const brands = utils.readJSON(brands_subdir, fetch_brand_ids.brand_links_file, log)
                 const categories = utils.readJSON(categories_subdir, fetch_category_ids.category_links_file, log)
                 return { products, 
@@ -47,7 +52,10 @@ module.exports = (config) => {
                     categories }
             })()
             
-              
+            
+            /* /////////////////stage 2a//////////////////////
+              using the category subdomain links scraped from stage 1, visit each link and scrape the product ids associated with each
+            */
             const product_ids_by_category = await (async function(){
 
                 if(fetch_category_ids.exec_scrape){
@@ -59,6 +67,9 @@ module.exports = (config) => {
                 }          
             })()
 
+            /* /////////////////stage 2b//////////////////////
+              using the brands subdomain links scraped from stage 1, visit each link and scrape the product ids associated with each
+            */
             const product_ids_by_brand = await (async function(){
 
                 if(fetch_brand_ids.exec_scrape){
@@ -70,7 +81,9 @@ module.exports = (config) => {
                 }          
             })()
 
-            ////////////////////////////////////// stage 3//////////////////////////////////////////////// merge the products with brand/category by id
+            /* /////////////////stage 3//////////////////////
+              merge the categories and brands by product id (from stage 2) into each product scraped from stage 1
+            */
             const categorized_branded_products = categorizeBrandProducts(products, product_ids_by_brand, product_ids_by_category, log)
             const cleaned_products             = clean(categorized_branded_products, write_inventory.buckets, utils, log)
 

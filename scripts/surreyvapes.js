@@ -67,7 +67,7 @@ async function scrape(domain, dir, file_name, utils, log){
       }
 
     const start_page = 1
-    const end_page = 4
+    const end_page = 5
     
     const subpath = 'products'
     const page_param = (page)=>`page=${page}`
