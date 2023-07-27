@@ -2,8 +2,16 @@ const fs = require('fs');
 const utils = require('../utils')
 const db = require('../database/database.js')
 const {createProducts,createTagMetaData} = require('../database/CRUD/create.js')
-const {deleteProducts,deleteTagMetaData} = require('../database/CRUD/delete.js')
-const { Product } = require('../database/models.js')
+const {dropCollections} = require('../database/CRUD/delete.js')
+//const { Product } = require('../database/models.js')
+
+//it's important that these strings dont change as the client uses them to set up UI
+//i should probabley create a 'configs' collection allowing me to share constants configured here with the client 
+const TAG_METADATA_TYPE_NAMES = {
+    CATEGORIES: "CATEGORIES",
+    BRANDS:     "BRANDS",
+    STORES:     "STORES"
+}
 
 const LOG_FILE_NAME  = 'inventory'
 
@@ -23,40 +31,67 @@ module.exports = ( () => {
 
     log.info("************ files: "+ inventories_dir.map(f => `${getFileName(f)}.json`).join(',') + "********************")
 
-    const normalized_products = [] // list of objects that are ready for writing to products collection
+    const products_documents = [] // products collection document
 
-    // init buckets to generate tagmetadatas collection for categories/brands/stores
+    // init buckets to generate tagmetadatas collection for categories/brands/stores 
     const categories_pbm = utils.initProductBucketMetrics(log)
     const brands_pbm = utils.initProductBucketMetrics(log)
     const stores_pbm = utils.initProductBucketMetrics(log)
 
+    try{
+
     inventories_dir.forEach( (file)=>{ //for each JSON file in the /inventories directory
         
         const products = utils.readJSON(utils.INVENTORIES_DIR, getFileName(file), log) 
-        log.info("/////////////////////////////"+ getFileName(file)+ "///////////////////////////////////////")
+        log.info("/////////////////////////////"+getFileName(file)+ "///////////////////////////////////////")
+        
+        products.forEach( (p) => { //for each product...
+            //map the product to a single category, brand, and store bucket
 
-        products.forEach( (p) => {
-            //generate
-            categories_pbm.putProductBuckets([p.buckets[0]], p)            //add the **first element** of the buckets arr to bucket; every product may only belong to a single bucket
-            p.brand && brands_pbm.putProductBuckets([p.brand], p)     //add the brand to bucket, if product contains a brand
-            stores_pbm.putProductBuckets([getFileName(file)], p)     //add the e-store/source to bucket
-            normalized_products.push(normalize(p, [p.buckets[0]], getFileName(file)))  //format objct to confirm to mongodb Product schema and add to list
+            if(p.buckets.length === 0){ // if the product does not have at least a single category tag, throw an error
+                throw new Error("ERROR: product \"" +  p.name + "\" has no category buckets. reconfigure the "+getFileName(file)+" bucket obj and rerun the clean step to assign at least a single bucket to this product");
+            }
+
+            const product_categories = [p.buckets[0]] // only add the first entry of the bucket as a category; every product may only belong to a single category
+
+            categories_pbm.putProductBuckets(product_categories, p) //add the category to the category bucket    
+
+            if(p.brand){ //if product contains a brand, add to brand bucket.
+                brands_pbm.putProductBuckets([p.brand], p)
+            }
+   
+            stores_pbm.putProductBuckets([getFileName(file)], p)     //add the e-store/source to store bucket
+            products_documents.push(convertToProductsDocument(p, product_categories, getFileName(file)))  //format objct to confirm to mongodb Product schema and add to product documents list
         })  
     })
 
-    categories_pbm.printProductBuckets(false, 'categories')
-    brands_pbm.printProductBuckets(false, 'brands')
-    stores_pbm.printProductBuckets(false, 'stores')
+    //categories_pbm.printProductBuckets(false, 'categories')
+    //brands_pbm.printProductBuckets(false, 'brands')
+    //stores_pbm.printProductBuckets(false, 'stores')
 
-    const tag_mds = [] // list of compound objects containing categories,brands,stores names and num of products for each
+    const tag_metadatas_documents = [
+        categories_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.CATEGORIES),
+        brands_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.BRANDS),
+        stores_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.STORES)
+    ] // list of compound objects containing categories,brands,stores names and num of products for each
 
-    tag_mds.push(categories_pbm.generateTagMetaData("CATEGORIES"))
-    tag_mds.push(brands_pbm.generateTagMetaData("BRANDS"))    
-    tag_mds.push(stores_pbm.generateTagMetaData("STORES"))
+    //note that db insertion WILL FAIL with a cryptic error message if the document does not match the schema
+    // look up how to validate a document youre trying to insert with a schema in mongoose
+    //do this with both products and tagmetadata collection
+    // (this has already happened when one of the products did not get mapped to any category buckets) 
+    //tag_mds.push(categories_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.CATEGORIES))
+   // tag_mds.push(brands_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.BRANDS))    
+   // tag_mds.push(stores_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.STORES))
 
-    //writeDB(normalized_products, tag_mds)
-   
+    writeDB(products_documents, tag_metadatas_documents)
+
+    }catch({message}){
+        log.error(message)
+        return
+    }
+
 })()
+
 
 /*
  map product object to a mongo document object that matches the Product schema
@@ -67,13 +102,7 @@ module.exports = ( () => {
 return:
     a normalized object ready for insertion into the products collection
 */
-function normalize(product, categories, source){
-
-    //const docs = await Model.find().lean();
-    //return {_id: "..", categories: ["..."], brand: ""}
-    // keys_1 = Object.keys(docs)
-
-    //write to csv and input into google drive, file name is date
+function convertToProductsDocument(product, categories, source){
 
     return {
         source:         source,                                 
@@ -92,21 +121,19 @@ function normalize(product, categories, source){
 
 async function writeDB(products, tag_mds){
 //save new items to JSON before proceeding
+//save old items to JSON
 
     try {
         await db.connect();  
-        console.log("Connected correctly to server"); 
-        await deleteProducts()
-        await deleteTagMetaData()
-        console.log("deleted previous collections"); 
+        await dropCollections();
         const product_result = await createProducts(products)
         console.log("inserted products: ", product_result.length)
         const tag_md_result = await createTagMetaData(tag_mds)
         console.log("inserted tag_md: ", tag_md_result.length)
-
-       
+           
     } catch (err) {
-        console.log(err.stack);
+        console.log(err);
+
     }
     finally {
       await db.disconnect();
