@@ -9,9 +9,12 @@ const ROOT_DATA_DIR     = `${ROOT}/raw_pages`
 const INVENTORIES_DIR   = `${ROOT}/inventories`
 const LOGS_DIR          = `${ROOT}/logs`
 
+const DATABASE_ROOT = 'database'
+const COLLECTIONS_DIR =`${DATABASE_ROOT}/collections`
+
 const REQUEST_TIME_OUT   = 2500 //time in ms between requests
 
-createDirs([ROOT_DATA_DIR, INVENTORIES_DIR, LOGS_DIR])
+createDirs([ROOT_DATA_DIR, INVENTORIES_DIR, LOGS_DIR, COLLECTIONS_DIR])
 
 function createDirs(dirs){
     dirs.forEach( dir => !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true }) )
@@ -245,5 +248,6 @@ module.exports = {
     getProductBuckets, 
     propsCount,  
     ROOT_DATA_DIR, 
-    INVENTORIES_DIR 
+    INVENTORIES_DIR,
+    COLLECTIONS_DIR 
 }

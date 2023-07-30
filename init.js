@@ -263,6 +263,18 @@ const ezvapes_config = {
   },
 }
 
+//const a = require('./database/database.js')
+
+const inventory_config = {
+  db:                         require('./database/database.js'),
+  utils:                      require("./utils.js"),
+  log_file:                   'inventory',
+  write_collections_JSON:     true,
+  write_local_db:             true
+}
+
+//console.log(inventory_config)
+//
 
 //I HAVE AN API TO AN VPN
 // CAN I GET A NEW IP FOR EVERY SCRAPE?
@@ -282,7 +294,7 @@ Promise.all([
       // require("./scripts/surreyvapes")(surreyvapes_config)
   ]).then( () => {
     //PROCESS_AND_TRANSMIT_CATALOG
-      require("./scripts/inventory")
+      require("./scripts/inventory")(inventory_config)
   })
 
 

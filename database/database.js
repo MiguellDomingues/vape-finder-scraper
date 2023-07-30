@@ -1,9 +1,14 @@
-let mongoose = require('mongoose');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const {createProducts,createTagMetaData} = require('./CRUD/create.js')
+const {dropCollections} = require('./CRUD/delete.js')
+
+dotenv.config();
 
 const ATLAS ={
-    USERNAME: 'mdomingues1001',
-    PASSWORD: '0CKYslzcFlvxkTrN',
-    CLUSTER: 'cluster0.wp71sxq.mongodb.net',
+    USERNAME: process.env.DB_USERNAME  || "",
+    PASSWORD: process.env.DB_PASSWORD  || "",
+    CLUSTER: process.env.CLUSTER  || "",
     DATABASE_NAME: 'vape-finder',
     PARAMS: '?retryWrites=true&w=majority',
 }
@@ -13,39 +18,15 @@ const LOCAL ={
     DATABASE_NAME: 'vape_finder',     
 }
 
-const getLocalURI = _ => `mongodb://${LOCAL.DATABASE_DOMAIN}/${LOCAL.DATABASE_NAME}`;  
+const LOCAL_URI = `mongodb://${LOCAL.DATABASE_DOMAIN}/${LOCAL.DATABASE_NAME}`;  
 
-const getAtlasURI = _ => `mongodb+srv://${ATLAS.USERNAME}:${ATLAS.PASSWORD}@${ATLAS.CLUSTER}/${ATLAS.DATABASE_NAME}${ATLAS.PARAMS}`
-
+const ATLAS_URI = `mongodb+srv://${ATLAS.USERNAME}:${ATLAS.PASSWORD}@${ATLAS.CLUSTER}/${ATLAS.DATABASE_NAME}${ATLAS.PARAMS}`
 
 mongoose.set('strictQuery', true);
 
-
-const connect = async () => { await mongoose.connect(getAtlasURI()); }
+const connect = async (uri) => { await mongoose.connect(uri);}
 
 const disconnect = async () => { await mongoose.connection.close(); }
 
-module.exports = { connect, disconnect }
+module.exports = { connect, disconnect, LOCAL_URI, ATLAS_URI, createProducts,createTagMetaData,dropCollections }
 
-/*
-
-
-const LOCAL ={
-    DATABASE_DOMAIN: '127.0.0.1:27017',       
-    DATABASE_NAME: 'vape_finder',     
-}
-
-const getLocalURI = _ => `mongodb://${LOCAL.DATABASE_DOMAIN}/${LOCAL.DATABASE_NAME}`;  
-
-
-
-
-const USERNAME = 'mdomingues1001'
-const PASSWORD = '0CKYslzcFlvxkTrN'
-const CLUSTER = 'cluster0.wp71sxq.mongodb.net'
-const DATABASE_NAME     = 'vape-finder';
-const PARAMS = '?retryWrites=true&w=majority'
-
-
-const DATABASE_URI = `mongodb+srv://${USERNAME}:${PASSWORD}@${CLUSTER}/${DATABASE_NAME}${PARAMS}`
-*/

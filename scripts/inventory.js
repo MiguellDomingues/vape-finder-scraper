@@ -1,23 +1,26 @@
 const fs = require('fs');
-const utils = require('../utils')
-const db = require('../database/database.js')
-const {createProducts,createTagMetaData} = require('../database/CRUD/create.js')
-const {dropCollections} = require('../database/CRUD/delete.js')
+//const utils = require('../utils')
+//const db = require('../database/database.js')
+//const {connect, disconnect, LOCAL_URI, ATLAS_URI} = require('../database/database.js')
+////const {createProducts,createTagMetaData} = require('../database/CRUD/create.js')
+//const {dropCollections} = require('../database/CRUD/delete.js')
 //const { Product } = require('../database/models.js')
 
 //it's important that these strings dont change as the client uses them to set up UI
-//i should probabley create a 'configs' collection allowing me to share constants configured here with the client 
+//i should probabley create a 'shared configs' collection allowing me to share constants configured here with the client 
+//besides these keys, what else can be shared?
+// the product/tagmetadata schema?
 const TAG_METADATA_TYPE_NAMES = {
     CATEGORIES: "CATEGORIES",
     BRANDS:     "BRANDS",
     STORES:     "STORES"
 }
 
-const LOG_FILE_NAME  = 'inventory'
+module.exports = (config) => {
 
-const log = utils.getLogger(LOG_FILE_NAME)
+    const { db, log_file, utils, write_collections_JSON, write_local_db } = config
 
-module.exports = ( () => {
+    const log = utils.getLogger(log_file)
 
     log.info("***************** reading JSON files in " + utils.INVENTORIES_DIR+" ********************")
 
@@ -48,7 +51,7 @@ module.exports = ( () => {
         products.forEach( (p) => { //for each product...
             //map the product to a single category, brand, and store bucket
 
-            if(p.buckets.length === 0){ // if the product does not have at least a single category tag, throw an error
+            if(p.buckets.length === 0){ // if the product does not have at least a single category tag, throw an error (mongodb will fail on the insertion anyways because categories:[..] is required)
                 throw new Error("ERROR: product \"" +  p.name + "\" has no category buckets. reconfigure the "+getFileName(file)+" bucket obj and rerun the clean step to assign at least a single bucket to this product");
             }
 
@@ -62,12 +65,17 @@ module.exports = ( () => {
    
             stores_pbm.putProductBuckets([getFileName(file)], p)     //add the e-store/source to store bucket
             products_documents.push(convertToProductsDocument(p, product_categories, getFileName(file)))  //format objct to confirm to mongodb Product schema and add to product documents list
-        })  
+        })
+        
+        log.info("successfully converted all products into documents, bucketed the categories and brands")
     })
 
-    //categories_pbm.printProductBuckets(false, 'categories')
-    //brands_pbm.printProductBuckets(false, 'brands')
-    //stores_pbm.printProductBuckets(false, 'stores')
+    log.info("/////////////////////////////summary of categories///////////////////////////////////////")
+    categories_pbm.printProductBuckets(false, 'categories')
+   // log.info("/////////////////////////////summary of brands///////////////////////////////////////")
+   // brands_pbm.printProductBuckets(false, 'brands')
+    log.info("/////////////////////////////summary of stores///////////////////////////////////////")
+    stores_pbm.printProductBuckets(false, 'stores')
 
     const tag_metadatas_documents = [
         categories_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.CATEGORIES),
@@ -75,22 +83,21 @@ module.exports = ( () => {
         stores_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.STORES)
     ] // list of compound objects containing categories,brands,stores names and num of products for each
 
+    log.info("successfully created tagmetadatas documents for " + TAG_METADATA_TYPE_NAMES.CATEGORIES + " " + TAG_METADATA_TYPE_NAMES.BRANDS + " " + TAG_METADATA_TYPE_NAMES.STORES)
+
     //note that db insertion WILL FAIL with a cryptic error message if the document does not match the schema
     // look up how to validate a document youre trying to insert with a schema in mongoose
     //do this with both products and tagmetadata collection
     // (this has already happened when one of the products did not get mapped to any category buckets) 
-    //tag_mds.push(categories_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.CATEGORIES))
-   // tag_mds.push(brands_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.BRANDS))    
-   // tag_mds.push(stores_pbm.generateTagMetaData(TAG_METADATA_TYPE_NAMES.STORES))
-
-    writeDB(products_documents, tag_metadatas_documents)
+    
+    //writeDB(products_documents, tag_metadatas_documents, db, write_local_db)
 
     }catch({message}){
         log.error(message)
         return
     }
 
-})()
+}
 
 
 /*
@@ -119,16 +126,17 @@ function convertToProductsDocument(product, categories, source){
     }  
 }
 
-async function writeDB(products, tag_mds){
-//save new items to JSON before proceeding
-//save old items to JSON
+async function writeDB(products, tag_mds, db, write_local_db){
 
     try {
-        await db.connect();  
-        await dropCollections();
-        const product_result = await createProducts(products)
+
+        const connection_string = write_local_db ? db.LOCAL_URI : db.ATLAS_URI
+
+        await db.connect(connection_string);  
+        await db.dropCollections();
+        const product_result = await db.createProducts(products)
         console.log("inserted products: ", product_result.length)
-        const tag_md_result = await createTagMetaData(tag_mds)
+        const tag_md_result = await db.createTagMetaData(tag_mds)
         console.log("inserted tag_md: ", tag_md_result.length)
            
     } catch (err) {
