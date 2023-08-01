@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const {createProducts,createTagMetaData} = require('./CRUD/create.js')
 const {dropCollections} = require('./CRUD/delete.js')
+const { Product,TagMetaData } = require('./models.js');
 
 dotenv.config();
 
@@ -28,5 +29,19 @@ const connect = async (uri) => { await mongoose.connect(uri);}
 
 const disconnect = async () => { await mongoose.connection.close(); }
 
-module.exports = { connect, disconnect, LOCAL_URI, ATLAS_URI, createProducts,createTagMetaData,dropCollections }
+const validateProduct = (product) => { return new Product(product).validateSync()}
+
+const validateTagMetaData = (tag_md) => { return new TagMetaData(tag_md).validateSync()}
+
+module.exports = { 
+    connect, 
+    disconnect, 
+    LOCAL_URI, 
+    ATLAS_URI, 
+    createProducts,
+    createTagMetaData,
+    dropCollections, 
+    validateProduct,
+    validateTagMetaData,
+}
 

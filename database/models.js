@@ -13,12 +13,23 @@ const BUCKETS = [
     'Accessories/Miscellaneous',
  ] 
 
+//note that 'required: true' is only for the KEY
 const productSchema = new mongoose.Schema({
     source:         { type: String, required: true },
     source_id:      { type: String, required: true },
     source_url:     { type: String, required: true },
     last_updated:   { type: String, required: true },
-    categories:     { type: [String], enum: Object.values(BUCKETS) },
+    categories:     { 
+        type: [String], 
+        enum: Object.values(BUCKETS),
+        required: true,
+        validate: {
+            validator: function (categories) {
+              return categories.length >= 1 && !categories.includes(null); 
+            },
+            message: 'categories array must have a minimum of 1 element and not include nulls.',
+        }
+    },
     price:          { type: Number, required: true },
     name:           { type: String, required: true },
     img_src:          String,
