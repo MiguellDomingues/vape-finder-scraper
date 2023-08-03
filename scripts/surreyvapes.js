@@ -1,4 +1,5 @@
 const cheerio = require("cheerio");
+const utils = require("../utils.js")
 
 module.exports = (config) => {
 
@@ -6,12 +7,12 @@ module.exports = (config) => {
         domain, 
         data_dir,
         raw_products_file, 
-        inventory_file, 
-        log_file, 
         buckets, 
-        utils, 
         execute_scrape, 
         execute_inventory} = config
+
+    const cleaned_products_file = data_dir     
+    const log_file =              data_dir
 
     const log = utils.getLogger(log_file)
     const _data_dir = `${utils.ROOT_DATA_DIR}/${data_dir}`
@@ -23,10 +24,23 @@ module.exports = (config) => {
 
         const time_start = Date.now()
 
-        try{         
-            const raw_products = execute_scrape ? await scrape(domain, _data_dir, raw_products_file, utils, log) : utils.readJSON(_data_dir, raw_products_file, log)
-            const cleaned_products = clean(raw_products, buckets, utils, log)
-            execute_inventory && utils.writeJSON(utils.INVENTORIES_DIR, inventory_file, cleaned_products, log)
+        try{     
+            
+            let raw_products
+                                                                                    //get raw products by either......
+            if(execute_scrape){ 
+                raw_products = await scrape(domain, log)                            //scraping the domain
+                utils.writeJSON(_data_dir, raw_products_file, raw_products, log)    //.. then writing results to a file
+            }else{
+                raw_products = utils.readJSON(_data_dir, raw_products_file, log)    //.. or reading the raw products from a previous scrape
+            }
+
+            const cleaned_products = clean(raw_products, buckets, log)      
+            
+            if(execute_inventory){                                                  //write the cleaned products to the /inventory folder, overwriting the current file
+                utils.writeJSON(utils.INVENTORIES_DIR, cleaned_products_file, cleaned_products, log)
+            }
+
         }catch(err){
             log.error(err)
         }finally{
@@ -37,8 +51,12 @@ module.exports = (config) => {
     })
 }
 
-async function scrape(domain, dir, file_name, utils, log){
+/*
+generates a list of URLS and defines a webscraping function 
+*/
+async function scrape(domain, log){
 
+    /* webscraping function */
     function scrapeProductInfo(html) {
 
         const $ = cheerio.load(html);
@@ -81,11 +99,23 @@ async function scrape(domain, dir, file_name, utils, log){
             
     //visit urls, process each url with scraper function, return array of products
     const raw_products = (await utils.scrapePages(urls, scrapeProductInfo,log)).flat()
-    utils.writeJSON(dir, file_name, raw_products, log)
     return raw_products
 }
 
-function clean(raw_products, buckets, utils, log){
+/*
+filter and transform the raw products so it conforms to a common data format:
+{
+    id:       Str        
+    name:     Str      
+    src:      URL         
+    brand:    Str      
+    category: Str      
+    img:      URL      
+    price:    Double
+    buckets: [Str,..] 
+}
+*/
+function clean(raw_products, buckets, log){
 
     // remove non-vape products, such as rolling-papers, vaporizers, lighters, butane, etc
     // this is acquired from analysis of categories

@@ -48,17 +48,11 @@ module.exports = (config) => {
     }
 }
 
+//create a list of validated Product objects from json files in the source_dir
+//throws an error if any products dont match the Schema OR contain an empty "buckets" arr
 function createProductsCollection(source_dir, log){
 
-    /*
-    map product object to a mongo document object that matches the Product schema
-    input:
-        product:    the original product object
-        categories: arr of category string tags
-        source:     the name of the e-store the product was scraped from
-    return:
-        a Product Schema object ready for insertion into the products collection
-    */
+    //map product info, categories and source to a Product document
     function convertToProductsDocument(product, categories, source){
 
         return {
@@ -94,7 +88,7 @@ function createProductsCollection(source_dir, log){
             const product_categories = [p.buckets[0]] // only add the first entry of the bucket as a category; every product may only belong to a single category
             const product_document = convertToProductsDocument(p, product_categories, getFileName(file))
 
-            const error = db.validateProduct(product_document)
+            const error = db.validateProduct(product_document) //validate product against the Product Schema
 
             if(error){
                 throw new Error(error._message + " in " + getFileName(file) + " product name: " + p.name);
@@ -110,6 +104,8 @@ function createProductsCollection(source_dir, log){
 
 }
 
+//create a list of validated TagMetaDatas objects from json files in the source_dir
+//throws an error if any products dont match the Schema OR contain an empty "buckets" arr
 function createTagMetaDatasCollection(source_dir, log){
 
     const categories_pbm = utils.initProductBucketMetrics(log)
@@ -185,6 +181,7 @@ function writeCollectionsToFile(products, tag_mds, log){
     utils.writeJSON(dir, 'tagmetadatas', tag_mds, log)
 }
 
+//replaces the products, tagmetadatas collections in the local or atlas mongodb instance
 async function writeDB(products, tag_mds, write_local_db, log){
 
     try {
@@ -201,7 +198,6 @@ async function writeDB(products, tag_mds, write_local_db, log){
            
     } catch (err) {
         log.info("error writing to db: "+err);
-
     }
     finally {
       await db.disconnect();
