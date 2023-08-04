@@ -6,3 +6,5 @@ package-lock.json
 
 test.bat
 
+database/collections
+.env
