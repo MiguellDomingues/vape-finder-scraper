@@ -2,9 +2,8 @@ raw_pages/
 inventories/
 node_modules/
 logs/
+collections/
 package-lock.json
 
 test.bat
 
-database/collections
-.env
