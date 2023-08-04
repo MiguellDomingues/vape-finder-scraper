@@ -4,19 +4,31 @@ const axios = require("axios");
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, printf } = format;
 
+//dir paths to store files
 const ROOT              = 'scraper'
 const ROOT_DATA_DIR     = `${ROOT}/raw_pages`
 const INVENTORIES_DIR   = `${ROOT}/inventories`
 const LOGS_DIR          = `${ROOT}/logs`
 
+const DATABASE_ROOT = 'database'
+const COLLECTIONS_DIR =`${DATABASE_ROOT}/collections`
+
 const REQUEST_TIME_OUT   = 2500 //time in ms between requests
 
-createDirs([ROOT_DATA_DIR, INVENTORIES_DIR, LOGS_DIR])
+createDirs([ROOT_DATA_DIR, INVENTORIES_DIR, LOGS_DIR, COLLECTIONS_DIR])
 
+//create new directories, if they do not exist 
+//input: [ "dir_path1", "dir_path2", ...]
 function createDirs(dirs){
     dirs.forEach( dir => !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true }) )
 }
-
+/*
+write json object to a JSON file and log results. if the file already exists, it is overwritten
+- dir:       String path to write
+- file_name: String name of the file
+- json:      [ {..}, {..},..] or {k1:[..], k2:[...],...}
+- logger:    instance of a winston logger object
+*/
 function writeJSON(dir, file_name, json, logger){
     //TODO check for empty json
     const path = `${dir}/${file_name}.json`
@@ -34,6 +46,14 @@ function writeJSON(dir, file_name, json, logger){
 
 }
 
+/*
+read a JSON file and log results
+- dir:       String path to write
+- file_name: String name of the file
+- logger:    instance of a winston logger object
+return:      
+- an object of the form: [ {..}, {..},..] or {k1:[..], k2:[...],...}
+*/
 function readJSON(dir, file_name, logger){
     const path = `${dir}/${file_name}.json`
     const json = JSON.parse(fs.readFileSync(path, {encoding:'utf8', flag:'r'}))
@@ -50,6 +70,9 @@ function readJSON(dir, file_name, logger){
     return json
 }
 
+/*
+instantiates a closure which configures and returns a winston logging object
+*/
 function getLogger(log_file_name){
 
     const myFormat = printf(({ message, timestamp }) => {
@@ -71,12 +94,20 @@ function getLogger(log_file_name){
     })()
 }
 
+/*
+instantiates and returns a closure which provides an interface for associating string keys with an array of product objects
+used for analysis of scraped data and generating tags
+
+putProductBuckets(buckets,v):   add a single product v to entries in the hashmap with the same key as 'bucket'
+generateTagMetaData(type_name): create a tagmetasdatas document object containing an array count for each key in the hashmap
+printProductBuckets:            log the contents of the hashmap: either key->array count OR key->contents of objects in array
+*/
 function initProductBucketMetrics(_logger){
         
     //like an instance of the class
     return (function (_logger){
         // the public variables
-        const m = new Map()
+        const m = new Map() //hashmap of product objs->[{..},{..}, ...] 
         const logger = _logger
 
         return {
@@ -106,6 +137,13 @@ function initProductBucketMetrics(_logger){
     })(_logger)
 }
 
+/*
+instantiates and returns closure which provides an interface for counting common props across multiple product objects
+used for analysis/logging of scraped data
+
+countProps(p):      count the props on a product object 
+printPropsCount:    log the counted props 
+*/
 function propsCount(_log){
     return (function (_log){
         // the public variables
@@ -133,6 +171,14 @@ function propsCount(_log){
     })(_log)
 }
 
+/*
+determines the categories of a product by scanning the scraped name, category and comparing it against the bucket object
+-category_str: raw category string 
+-name_str:     raw product name string
+-buckets:      obj of the form [{bucketname:Str, synonyms:[Str1, Str2...]}, {},...]
+returns:
+-an array of bucketnames sorted by highest->lowest matches between the bucketname synomyns and the name/category strings
+*/
 function getProductBuckets(category_str, name_str, buckets){
 
     /*
@@ -173,9 +219,9 @@ function getProductBuckets(category_str, name_str, buckets){
     })(category_str, name_str)
 
     /*
-    return 0-n max score bucket name(s)
+    return [0-n] max score bucket name(s)
     if multiple buckets were tied for max score, return those bucket names
-    if all the scores were 0, returns an empty list     
+    if all the scores were 0, returns an empty arr    
     */
     const max_points_buckets = ( (bp)=>{
         const non_zero_points = Object.keys(bp).filter( k => bp[k].points > 0)                                                
@@ -187,33 +233,41 @@ function getProductBuckets(category_str, name_str, buckets){
     return max_points_buckets
 }
 
-//TODO: the scraper function should return a object of just key->arr's, instead of an arr OR an object of key->arrs
+/*
+execute the provided scraper function on each url, appending each result to a list
+
+-urls:     [url1, url2,....],                    list of URLs to scrape
+-scraper:  Function(String)                      callback that converts raw html (or json) into a list of product objects OR an object of keys
+-limit:    Int,                                  maximum allowable URLs allowed to be scraped
+
+return: [ [{prod1}, {prod2},..],..] OR [{key1:.., key2:.., key3:..,..}]
+*/
 async function scrapePages(urls, scraper, logger, limit = 300){
     return new Promise( async (resolve, reject) => {
         try{               
                 const time_start = Date.now()
-                const scraped_pages = []
-                let page_count = 0
+                const scraped_pages = []                                                                    //to store output from each scraped url
+                let page_count = 0                                                                          
 
-                for (const url of urls){
+                for (const url of urls){                                                                    //for each url string
                     try{
-                        const { data } = await axios.get(url)
+                        const { data } = await axios.get(url)                                               //fetch html/json and execute scaper callback
                         const scraped_json = scraper(data)
 
-                        if(scraped_json.length === 0){
+                        if(scraped_json.length === 0){                                                      //if the scraper function fails, abort the entire scrape
                             logger.info(`scrape on ${url} failed to return any data. aborting` )
                             break
                         }
                          
-                        if(scraped_json.length) 
-                            logger.info("scraped "+ scraped_json.length + " items from "+ url)
+                        if(scraped_json.length)                                                             //inspect the data returned from the scraper function
+                            logger.info("scraped "+ scraped_json.length + " items from "+ url)              // it can be a list of objects or an object with keys
                         else if(Object.keys(scraped_json).length)
                             logger.info("scraped "+ Object.keys(scraped_json).length + " keys from "+ url)
                                           
                         scraped_pages.push(scraped_json)
-                        await (() => new Promise(resolve => setTimeout(resolve, REQUEST_TIME_OUT)))()
+                        await (() => new Promise(resolve => setTimeout(resolve, REQUEST_TIME_OUT)))()       //force a delay between each callout
                 
-                        if(++page_count === limit){
+                        if(++page_count === limit){                                                         //abort the rest of the scrape if the page limit is reached
                             logger.info(`limit of ${limit} callouts reached. aborting` )
                             break
                         }
@@ -230,7 +284,7 @@ async function scrapePages(urls, scraper, logger, limit = 300){
                 resolve(scraped_pages)
 
         }catch(err){
-            reject(err)
+            reject(err)   //this is never executed because the inner try/catch will catch all the errors
         }
     })
 }
@@ -245,5 +299,6 @@ module.exports = {
     getProductBuckets, 
     propsCount,  
     ROOT_DATA_DIR, 
-    INVENTORIES_DIR 
+    INVENTORIES_DIR,
+    COLLECTIONS_DIR 
 }

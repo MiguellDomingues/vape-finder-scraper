@@ -1,15 +1,18 @@
+const utils = require("../utils.js")
+
+//driver function
 module.exports = (config) => {  
 
     const {
         domain, 
         data_dir,
         raw_products_file, 
-        inventory_file, 
-        log_file, 
         buckets, 
-        utils, 
         execute_scrape, 
         execute_inventory} = config
+
+    const cleaned_products_file = data_dir     
+    const log_file =              data_dir
  
     const log = utils.getLogger(log_file)
     const _data_dir = `${utils.ROOT_DATA_DIR}/${data_dir}`
@@ -20,10 +23,23 @@ module.exports = (config) => {
 
         const time_start = Date.now()
 
-        try{         
-            const raw_products = execute_scrape ? await scrape(domain, _data_dir, raw_products_file, utils, log) : utils.readJSON(_data_dir, raw_products_file, log)
-            const cleaned_products = clean(raw_products, domain, buckets, utils, log)
-            execute_inventory && utils.writeJSON(utils.INVENTORIES_DIR, inventory_file, cleaned_products, log)
+        try{
+            
+            let raw_products
+                                                                                    //get raw products by either......
+            if(execute_scrape){ 
+                raw_products = await scrape(domain, log)                            //scraping the domain
+                utils.writeJSON(_data_dir, raw_products_file, raw_products, log)    //.. then writing results to a file
+            }else{
+                raw_products = utils.readJSON(_data_dir, raw_products_file, log)    //.. or reading the raw products from a previous scrape
+            }
+
+            const cleaned_products = clean(raw_products, domain, buckets, log)      
+            
+            if(execute_inventory){                                                  //write the cleaned products to the /inventory folder, overwriting the current file
+                utils.writeJSON(utils.INVENTORIES_DIR, cleaned_products_file, cleaned_products, log)
+            }
+
         }catch(err){
             log.error(err)
         }finally{
@@ -34,9 +50,22 @@ module.exports = (config) => {
     })
 }
 
-function clean(raw_products, domain, buckets, utils, log){
+/*
+filter and transform the raw products so it conforms to a common data format:
+{
+    id:       Str        
+    name:     Str      
+    src:      URL         
+    brand:    Str      
+    category: Str      
+    img:      URL      
+    price:    Double
+    buckets: [Str,..] 
+}
+*/
+function clean(raw_products, domain, buckets, log){
 
-    let includes = [
+    let includes = [ //product_type: inclusions
         'E-Liquid',
         'Hardware',
         'Wicks & Wire', 
@@ -53,13 +82,13 @@ function clean(raw_products, domain, buckets, utils, log){
     const pc = utils.propsCount(log)
 
     raw_products = raw_products
-    .map( (p)=>{
+    .map( (p)=>{ //transform product_type "A - B - C ..." to "A,B,C..."
         p.product_type = p.product_type.split(" - ").join(",")
             return p
     })
-    .filter(                                                                              
+    .filter(     //ignore any products with a product_type not included in the 'includes' array                                                                      
         (p)=> includes.filter( (tag) => p.product_type.includes(tag) ).length > 0 )
-    .map( (p)=>{
+    .map( (p)=>{ //generate a new product object with a common data format  
         return {
             id:             p.id,  
             name:           p.title,
@@ -71,13 +100,12 @@ function clean(raw_products, domain, buckets, utils, log){
         }
     })
     .map( 
-        (p)=>{              // add product to 0 or more buckets, based on tags/synomyns within each bucket. print no bucket or multibucket matches to log
+        (p)=>{ // add product to 0 or more buckets, based on tags/synomyns within each bucket. print no bucket or multibucket matches to log
             p.buckets = utils.getProductBuckets(p.category, p.name, buckets)
             p.buckets.length > 1 && log.info(`multiple buckets: ${p.buckets} , ${p.name}, ${p.category}`)
             p.buckets.length === 0 && log.info(`no buckets: ${p.buckets} , ${p.name}, ${p.category}`)
             pb.putProductBuckets(p.buckets,p)
             pc.countProps(p)
-            //console.log(p.buckets , p.name, p.category)
             return p})
 
     pb.printProductBuckets()
@@ -87,7 +115,12 @@ function clean(raw_products, domain, buckets, utils, log){
     return raw_products
 }
 
-async function scrape(domain, dir, file_name, utils, logger){
+/*
+generate a list of URLS and pass them to the scrapePages function. 
+since thunderbirdvapes uses shopify as it's ecommerce platform, it is easy:
+https://www.thunderbirdvapes.com/products.json -> { products: [ {p1}, {p2,...} ] }
+*/
+async function scrape(domain, logger){
 
     const start_page = 1
     const end_page = 6
@@ -102,9 +135,8 @@ async function scrape(domain, dir, file_name, utils, logger){
     for(let page = start_page; page <= end_page; page++)
         urls.push(`${domain}/${subpath}?${limit_param}&${page_param(page)}`)
 
-    //visit urls, process each url with scraper function, return array of array of products
+    //visit urls, process each url with scraper function, return array of array of products, flatten to a single array  
     const products = (await utils.scrapePages(urls, json=>json["products"],logger)).flat()
-    utils.writeJSON(dir, file_name, products, logger)
     return products
 }
 
