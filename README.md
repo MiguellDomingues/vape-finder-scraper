@@ -2,7 +2,7 @@
 
 ## Description
 
-Content discovery for the [BC Vape Finder](https://github.com/MiguellDomingues/vape-finder-client/) project
+A collection of web scraping scripts to discover content for the [BC Vape Finder](https://github.com/MiguellDomingues/vape-finder-client/) project
 
 ## Purpose
 
@@ -13,11 +13,12 @@ I developed this project to explore a practical application of web scraping, the
 
 ## How To Use
 
+Requires Node.js and Git
 ```
 # Clone this repository
 $ git clone https://github.com/MiguellDomingues/vape-finder-scraper
 
-# Go into the repository
+# Go into the repository dir
 $ cd vape-finder-scraper
 
 # Install dependencies
@@ -27,7 +28,68 @@ $ npm install
 $ node init
 ```
 
-### Configurations
+### Configuration
+
+Control which scripts will run on each execution by commenting or uncommenting the corresponding ```require(..)(..)``` statement in ```init.js```
+
+~~~
+Promise.all([                                                 //web scrapers for each of the target websites
+      require("./scripts/ezvape")(ezvapes_config), 
+      require("./scripts/thunderbirdvapes")(tbvapes_config),
+      require("./scripts/surreyvapes")(surreyvapes_config)
+  ]).then( () => {
+      require("./scripts/inventory")(inventory_config)        //read JSON files in scraper/inventory. runs after the all above scripts have completed
+  })
+~~~
+
+Each script is passed in a config object containing flags to control behaviors:
+
+```
+const tbvapes_config = {
+  //run the web scraping function and save results to scraper/thunderbirdvapes/products.JSON 
+  execute_scrape:             true,
+
+  //read products.JSON , clean the scraped products , save to scraper/inventory/thunderbirdvapes.JSON     
+  execute_inventory:          true     
+}
+```
+
+```
+const surreyvapes_config = {
+  //run the web scraping function and save results to scraper/surreyvapes/products.JSON
+  execute_scrape:             true,
+
+  //read products.JSON, clean the scraped products and save to scraper/inventory/surreyvapes.JSON    
+  execute_inventory:          true     
+}
+```
+
+```
+const ezvapes_config = {
+  //run the web scraping function to generate 3 files in scraper/ezvapes: products.JSON, brand_links.JSON, category_links.JSON
+  exec_scrape_products__category_brand_links:   true,
+  
+  //read brand_links.JSON, run the web scraping function to generate brand_ids.JSON
+  exec_scrape_brand_ids:                        true,
+  
+  //read category_links.JSON, run the web scraping function to generate category_ids.JSON
+  exec_scrape_category_ids:                     true,
+  
+  //read products.JSON, brand_ids.JSON, category_ids.JSON, adds category, brand to product, clean and save to scraper/inventory/ezvapes.JSON  
+  exec_inventory:                               true,
+}
+```
+
+```
+const inventory_config = {
+  //write validated collections to JSON files in database/collections/(timestamp) dir 
+  write_collections_JSON:     true,
+  //true writes to local mongodb instance, false writes atlas instance,  
+  write_local_db:             true,
+   //true writes/overwrites collections in db specified in above flag 
+  execute_db_write:           true 
+}
+```
 
 
 
@@ -104,6 +166,43 @@ https://surreyvapes.com | BigCommerce | Medium
 https://ezvape.com | WooCommerce | Highest
 
 
+## Output Structure
+
+database/
+├── configs
+│   ├── plist
+│   │   └── com.apple.Terminal.plist
+│   ├── sublime_2
+│   │   └── ...
+│   └── sublime_3
+│       └── ...
+├── dotfiles
+│   ├── .bash_profile
+│   ├── .bashrc
+│   ├── .gitconfig
+│   ├── .pypirc
+│   ├── ...
+│   ├── .shallow-backup
+│   ├── .ssh/
+│   │   └── known_hosts
+│   ├── .vim/
+│   └── .zshrc
+├── fonts
+│   ├── AllerDisplay.ttf
+│   ├── Aller_Bd.ttf
+│   ├── ...
+│   ├── Ubuntu Mono derivative Powerline Italic.ttf
+│   └── Ubuntu Mono derivative Powerline.ttf
+└── packages
+    ├── brew-cask_list.txt
+    ├── brew_list.txt
+    ├── cargo_list.txt
+    ├── gem_list.txt
+    ├── installed_apps_list.txt
+    ├── npm_list.txt
+    ├── macports_list.txt
+    ├── pip_list.txt
+    └── sublime3_list.txt
 
 ### thunderbirdvapes
 
