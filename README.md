@@ -128,6 +128,14 @@ const inventory_config = {
 - [mongoose](https://github.com/Automattic/mongoose)
 - [winston](https://github.com/winstonjs/winston)
 
+## Potential Improvements
+
+- Instead of cleaning data manually with code, we could convert the scrape output to .csv and pass those files to data cleaning tools
+- Clean up the brand names (GCORE, G-CORE, GCore should all be 'Gcore')
+- E-juices could have flavours as a sub-category
+- Save and self-host all scraped images to cut down on bandwidth usagerather then directly hitting 
+- Use [puppeteer](https://github.com/puppeteer/puppeteer) to access to browser cache and save the product images during each url scrape; this would eliminate the bandwidth usage  
+
 
 
 
