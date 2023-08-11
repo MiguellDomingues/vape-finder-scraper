@@ -2,15 +2,14 @@
 
 ## Description
 
-A collection of web scraping scripts to discover content for the [BC Vape Finder](https://github.com/MiguellDomingues/vape-finder-client/) project
+A collection of web scraping scripts to facilitate content discovery for the [BC Vape Finder](https://github.com/MiguellDomingues/vape-finder-client/) project
 
 ## Purpose
 
-I developed this project to explore a practical application of web scraping, the ETL process. Tasks include:
+I developed this project to explore a practical application of web scraping and the ETL process. Tasks include:
 
-- Implementing scripts of varying complexity to crawl, scrape, clean and categorize product data from 3 different e-commerce websites into JSON files with a common structure
-- Validating products against a predefined schema and inserting them into a mongodb collection
-- Comprehensive logging 
+- Implementing scripts to crawl, scrape, clean and categorize product data from 3 different e-commerce websites into JSON files with a common structure
+- Validating product data against a predefined schema and inserting them into a cloud-hosted mongodb instance
 
 ## How To Use
 
@@ -33,13 +32,13 @@ On first run, this creates a series of dirs in the proj root that will contain o
 
 ```
 scraper/
-├── inventory
+├── inventory/
 │   └── surreyvapes.JSON
 │   └── ...
-├── logs 
+├── logs /
 │   └── surreyvapes.log
 │   └── ...
-├── raw_pages   
+├── raw_pages/  
 │   └── surreyvapes
 │             └── products.JSON
 │   └── .....
@@ -57,7 +56,7 @@ Promise.all([
       require("./scripts/thunderbirdvapes")(tbvapes_config),
       require("./scripts/surreyvapes")(surreyvapes_config)
   ]).then( () => {
-      //write to databse. read JSON files in scraper/inventory. runs after the all above scripts have completed
+      //write to database. read JSON files in scraper/inventory. runs after the all above scripts have completed
       require("./scripts/inventory")(inventory_config)        
   })
 ~~~
@@ -104,8 +103,7 @@ const ezvapes_config = {
   
   //      read products.JSON, brand_ids.JSON, category_ids.JSON,
   //      add brand, category to matching products
-  //      clean the scraped products
-  //      save to scraper/inventory/ezvapes.JSON  
+  //      clean the scraped products, save to scraper/inventory/ezvapes.JSON  
   exec_inventory:                               true,
 }
 ```
