@@ -4,13 +4,6 @@
 
 A collection of web scraping scripts to facilitate content discovery for the [BC Vape Finder](https://github.com/MiguellDomingues/vape-finder-client/) project
 
-## Purpose
-
-I developed this project to explore a practical application of web scraping and the ETL process. Tasks include:
-
-- Implementing scripts to crawl, scrape, clean and categorize product data from 3 different e-commerce websites into JSON files with a common structure
-- Validating product data against a predefined schema and inserting them into a cloud-hosted mongodb instance
-
 ## How To Use
 
 Requires Node.js and Git.
@@ -28,20 +21,20 @@ $ npm install
 $ node init
 ```
 
-On first run, this creates a series of dirs in the proj root that will contain output/input files:
+On first run, dirs will be created in the proj root that contain output/input files:
 
 ```
 scraper/
 ├── inventory/
 │   └── surreyvapes.JSON
 │   └── ...
-├── logs /
+├── logs/
 │   └── surreyvapes.log
 │   └── ...
 ├── raw_pages/  
-│   └── surreyvapes
+│   └── surreyvapes/
 │             └── products.JSON
-│   └── .....
+│   └── ...../
 │             └── products.JSON
 ```
 
@@ -110,7 +103,7 @@ const ezvapes_config = {
 
 ```
 const inventory_config = {
-  //write validated collections to JSON files in database/collections/(timestamp) dir 
+  //write collections to database/collections/(timestamp).JSON
   write_collections_JSON:  true,
 
   //true writes to local mongodb instance, false writes atlas instance,  
@@ -130,11 +123,10 @@ const inventory_config = {
 
 ## Potential Improvements
 
-- Instead of cleaning data manually with code, we could convert the scrape output to .csv and pass those files to data cleaning tools
+- Instead of cleaning data manually with code, we could pass raw scrapes to data cleaning tools (or a web service such as https://trudo.ai)
+- E-juices could have flavours as a sub-category 
 - Clean up the brand names (GCORE, G-CORE, GCore should all be 'Gcore')
-- E-juices could have flavours as a sub-category
-- Save and self-host all scraped images to cut down on bandwidth usagerather then directly hitting 
-- Use [puppeteer](https://github.com/puppeteer/puppeteer) to access to browser cache and save the product images during each url scrape; this would eliminate the bandwidth usage  
+- Save and self-host scraped images to minimize bandwidth usage for original image providers
 
 
 
