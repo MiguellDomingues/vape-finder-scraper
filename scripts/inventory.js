@@ -2,6 +2,8 @@ const fs    = require('fs');
 const db    = require('../database/database.js')
 const utils = require("../utils.js")
 
+const log_file =   'inventory'
+
 //it's important that these strings dont change as the client uses them to set up UI
 //i should probabley create a 'shared configs' collection allowing me to share constants configured here with the client 
 //besides these keys, what else can be shared?
@@ -16,7 +18,7 @@ const getFileName = file => file.split('.')[0]
 
 module.exports = (config) => {
 
-    const { log_file, write_collections_JSON, write_local_db, execute_db_write } = config
+    const { write_collections_JSON, write_local_db, execute_db_write } = config
 
     const log = utils.getLogger(log_file)
 
@@ -181,7 +183,7 @@ function writeCollectionsToFile(products, tag_mds, log){
     utils.writeJSON(dir, 'tagmetadatas', tag_mds, log)
 }
 
-//replaces the products, tagmetadatas collections in the local or atlas mongodb instance
+//replaces the products, tagmetadatas collections
 async function writeDB(products, tag_mds, write_local_db, log){
 
     try {
