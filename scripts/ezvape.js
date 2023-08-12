@@ -1,24 +1,83 @@
 const cheerio = require("cheerio");
+const utils =   require("../utils.js");
+
+//domain_platform: woo-commerce
+const domain =                   'https://ezvape.com'
+const data_dir =                  'ezvape'
+const _data_dir =                `${utils.ROOT_DATA_DIR}/${data_dir}`
+
+const log_file =                  data_dir
+const inventory_file =            data_dir
+
+const raw_products_file =       'raw_products'
+
+const brand_links_file =       'brand_links'
+const b_product_ids_file =     'brand_product_ids'
+
+const category_links_file =    'category_links'
+const c_product_ids_file =     'category_product_ids'
+
+const brands_subdir             = _data_dir
+const categories_subdir         = _data_dir
+
+
+const buckets = [
+    {
+        name: 'Juices',
+        synonyms: ['e-juice', //surreyvapes
+                  'ejuice',  //ezvape
+                  'e-liquid'] //tbvapes
+    },
+    {
+        name: 'Coils',
+        synonyms: ['coil','rda','atomizer','RPM 40 Pod','Ego 1 Coil 1.0 Ohm 5/Pk','Metal RDA Stand','Crown 5 Coil','Notch Coil SS316L 0.35 ohm 10/Pk']
+    },
+    {
+        name: 'Pods',
+        synonyms: ['pod',]
+    },
+    {
+        name: 'Tanks',
+        synonyms: ['tank','clearomizer']
+    },
+    {
+        name: 'Starter Kits',
+        synonyms: ['starter', 'kit','disposable','disposables']
+    },
+    {
+        name: 'Mods',
+        synonyms: ['boxes', 'boxmod', 'box mod', 'mod', 'box']
+    },
+    {
+        name: 'Batteries',
+        synonyms: ['battery', 'batteries','18650']
+    },
+    {
+        name: 'Chargers',
+        synonyms: ['charger','charging','lush q4 charger','evod usb charger','Intellicharger I4 V2 Li-Ion/Nimh','Battery Charger','Wall Adapter','Power Bank']
+    },
+    {
+        name: 'Replacement Glass',
+        synonyms: ['glass','replacement','pyrex','replacement glass']
+    },
+    {
+        name: 'Accessories/Miscellaneous',
+        synonyms: ['wire','drip tip','cotton','apparel','mod accessories','pens','wick','adapter', '30 mL Unicorn Bottle',
+        'screwdriver','tweezer','decorative ring','magnet connector','vaper twizer','diy tool kit','Clapton Coil Building Kit','Zipper Storage Bag','Mouthpiece Glass']
+    },      
+]
+
 
 module.exports = (config) => {
 
     const {
-        domain, 
-        data_dir,
-        log_file, 
-        utils, 
-        write_inventory,
-        fetch_brand_ids,
-        fetch_category_ids,
-        fetch_products,
+       exec_scrape_products__category_brand_links,    
+       exec_scrape_brand_ids,
+       exec_scrape_category_ids,
+       exec_inventory,
     } = config
 
- 
     const log = utils.getLogger(log_file)
-
-    const _data_dir = `${utils.ROOT_DATA_DIR}/${data_dir}`
-    const brands_subdir             = `${_data_dir}/${fetch_brand_ids.brands_subdir}`
-    const categories_subdir         = `${_data_dir}/${fetch_category_ids.categories_subdir}`
 
     utils.createDirs([_data_dir,brands_subdir,categories_subdir])
 
@@ -35,18 +94,18 @@ module.exports = (config) => {
                 d) write results to files (overwrites existing)
             */
             const { products, brands, categories } = await (async function(){
-                if(fetch_products.exec_scrape){
+                if(exec_scrape_products__category_brand_links){
 
                     const {products, brands, categories } = await scrapeProductsAndBrandCategoryLinks(domain, utils, log)  
-                    utils.writeJSON(_data_dir, fetch_products.raw_products_file, products, log)  
-                    utils.writeJSON(brands_subdir, fetch_brand_ids.brand_links_file, brands, log)
-                    utils.writeJSON(categories_subdir, fetch_category_ids.category_links_file, categories, log)
+                    utils.writeJSON(_data_dir, raw_products_file, products, log)  
+                    utils.writeJSON(brands_subdir, brand_links_file, brands, log)
+                    utils.writeJSON(categories_subdir, category_links_file, categories, log)
                     return {products, brands, categories }
                 }
 
-                const products = utils.readJSON(_data_dir, fetch_products.raw_products_file, log)
-                const brands = utils.readJSON(brands_subdir, fetch_brand_ids.brand_links_file, log)
-                const categories = utils.readJSON(categories_subdir, fetch_category_ids.category_links_file, log)
+                const products = utils.readJSON(_data_dir, raw_products_file, log)
+                const brands = utils.readJSON(brands_subdir, brand_links_file, log)
+                const categories = utils.readJSON(categories_subdir, category_links_file, log)
                 return { products, 
                     brands, 
                     categories }
@@ -58,12 +117,12 @@ module.exports = (config) => {
             */
             const product_ids_by_category = await (async function(){
 
-                if(fetch_category_ids.exec_scrape){
+                if(exec_scrape_category_ids){
                     const product_ids_by_category = await getProductIdsByCategory(categories, domain, utils, log)    
-                    utils.writeJSON(categories_subdir, fetch_category_ids.c_product_ids_file, product_ids_by_category, log)
+                    utils.writeJSON(categories_subdir, c_product_ids_file, product_ids_by_category, log)
                     return product_ids_by_category     
                 }else{
-                    return utils.readJSON(categories_subdir, fetch_category_ids.c_product_ids_file, log)
+                    return utils.readJSON(categories_subdir, c_product_ids_file, log)
                 }          
             })()
 
@@ -72,12 +131,12 @@ module.exports = (config) => {
             */
             const product_ids_by_brand = await (async function(){
 
-                if(fetch_brand_ids.exec_scrape){
+                if(exec_scrape_brand_ids){
                     const product_ids_by_brand = await getProductIdsByBrand(brands, domain, utils, log) 
-                    utils.writeJSON(brands_subdir, fetch_brand_ids.b_product_ids_file, product_ids_by_brand, log)
+                    utils.writeJSON(brands_subdir, b_product_ids_file, product_ids_by_brand, log)
                     return product_ids_by_brand     
                 }else{
-                    return utils.readJSON(brands_subdir, fetch_brand_ids.b_product_ids_file, log)
+                    return utils.readJSON(brands_subdir, b_product_ids_file, log)
                 }          
             })()
 
@@ -85,9 +144,10 @@ module.exports = (config) => {
               merge the categories and brands by product id (from stage 2) into each product scraped from stage 1
             */
             const categorized_branded_products = categorizeBrandProducts(products, product_ids_by_brand, product_ids_by_category, log)
-            const cleaned_products             = clean(categorized_branded_products, write_inventory.buckets, utils, log)
+            const cleaned_products             = clean(categorized_branded_products, buckets, utils, log)
 
-            write_inventory.exec_inventory && utils.writeJSON(utils.INVENTORIES_DIR, write_inventory.inventory_file, cleaned_products, log)
+            //write_inventory.exec_inventory && utils.writeJSON(utils.INVENTORIES_DIR, inventory_file, cleaned_products, log)
+            exec_inventory && utils.writeJSON(utils.INVENTORIES_DIR, inventory_file, cleaned_products, log)
         }
         catch(err){
             console.log(err)

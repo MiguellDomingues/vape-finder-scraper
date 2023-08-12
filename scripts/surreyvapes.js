@@ -1,15 +1,57 @@
 const cheerio = require("cheerio");
-const utils = require("../utils.js")
+const utils = require("../utils.js");
+
+const domain =              'https://www.surreyvapes.com'
+const data_dir =            'surreyvapes'
+const raw_products_file=    'raw_products'
+const buckets = [
+  {
+      name: 'Juices',
+      synonyms: ['e-juice', //surreyvapes
+                 'ejuice',  //ezvape
+                 'e-liquid'] //tbvapes
+  },
+  {
+      name: 'Coils',
+      synonyms: ['coil','rda','atomizer']
+  },
+  {
+      name: 'Pods',
+      synonyms: ['pod','Mevol X Pods','Mevol X Device']
+  },
+  {
+      name: 'Tanks',
+      synonyms: ['tank','clearomizer']
+  },
+  {
+      name: 'Starter Kits',
+      synonyms: ['starter', 'kit','disposable','GCORE MODELX','Icon Bar Hybrid']
+  },
+  {
+      name: 'Mods',
+      synonyms: ['boxes', 'boxmod', 'box mod', 'mod', 'box']
+  },
+  {
+      name: 'Batteries',
+      synonyms: ['battery', 'batteries','18650']
+  },
+  {
+      name: 'Chargers',
+      synonyms: ['charger','charging']
+  },
+  {
+      name: 'Replacement Glass',
+      synonyms: ['glass','replacement','pyrex','replacement glass']
+  },
+  {
+      name: 'Accessories/Miscellaneous',
+      synonyms: ['wire','drip tip','cotton','apparel','mod accessories','pens','wick','adapter','screwdriver','tweezer','decorative ring','magnet connector','vaper twizer']
+  },      
+]
 
 module.exports = (config) => {
 
-    const {
-        domain, 
-        data_dir,
-        raw_products_file, 
-        buckets, 
-        execute_scrape, 
-        execute_inventory} = config
+    const { execute_scrape, execute_inventory} = config
 
     const cleaned_products_file = data_dir     
     const log_file =              data_dir
@@ -167,9 +209,7 @@ function clean(raw_products, buckets, log){
             pc.printPropsCount()
             log.info(`//////////finished cleaning: count: ${raw_products.length} ////////////////`)   
 
-    return raw_products
-
-    
+    return raw_products 
 }
 
 

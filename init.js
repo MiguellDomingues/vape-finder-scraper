@@ -1,220 +1,63 @@
 
-
 const tbvapes_config = {
-  //PLATFORM: SHOPIFY
-   domain:              'https://www.thunderbirdvapes.com',
-   data_dir:            'thunderbirdvapes',
-   raw_products_file:   'products',
-  
-   buckets:[
-      {
-          name: 'Juices',
-          synonyms: ['E-Liquid'] 
-      },
-      {
-          name: 'Coils',
-          synonyms: ['coil','rda','atomizer','RPM 40 Pod','Ego 1 Coil 1.0 Ohm 5/Pk','Metal RDA Stand','Crown 5 Coil']
-      },
-      {
-          name: 'Pods',
-          synonyms: ['pod',]
-      },
-      {
-          name: 'Tanks',
-          synonyms: ['tank','clearomizer']
-      },
-      {
-          name: 'Starter Kits',
-          synonyms: ['starter', 'kit','disposable','disposables']
-      },
-      {
-          name: 'Mods',
-          synonyms: ['boxes', 'boxmod', 'box mod', 'mod', 'box', 'Aegis Legend 2 200W Mod']
-      },
-      {
-          name: 'Batteries',
-          synonyms: ['battery', 'batteries','18650','18650','Evod 650mAh Battery']
-      },
-      {
-          name: 'Chargers',
-          synonyms: ['charger','charging','lush q4 charger','evod usb charger','Intellicharger I4 V2 Li-Ion/Nimh','Battery Charger','Wall Adapter','Power Bank']
-      },
-      {
-          name: 'Replacement Glass',
-          synonyms: ['glass','replacement','pyrex','replacement glass','dotAIO V2 Replacement Tank']
-      },
-      {
-          name: 'Accessories/Miscellaneous',
-          synonyms: ['wire','drip tip','cotton','apparel','mod accessories','pens','wick','adapter',
-          'screwdriver','tweezer','decorative ring','magnet connector','vaper twizer','diy tool kit','Clapton Coil Building Kit','Zipper Storage Bag','Mouthpiece Glass']
-      }
-    ],
+  //      run the web scraping function
+  //      save results to scraper/thunderbirdvapes/products.JSON 
+  execute_scrape:     true,
 
-    execute_scrape:         false,
-    execute_inventory:      true
+  //      read products.JSON , clean the scraped products
+  //      save to scraper/inventory/thunderbirdvapes.JSON     
+  execute_inventory:  true     
 }
-
-
 const surreyvapes_config = {
-  //PLATFORM: BIGCOMMERCE
-  domain:              'https://www.surreyvapes.com',
-  data_dir:            'surreyvapes',
-  raw_products_file:   'raw_products',
-  buckets: [
-    {
-        name: 'Juices',
-        synonyms: ['e-juice', //surreyvapes
-                   'ejuice',  //ezvape
-                   'e-liquid'] //tbvapes
-    },
-    {
-        name: 'Coils',
-        synonyms: ['coil','rda','atomizer']
-    },
-    {
-        name: 'Pods',
-        synonyms: ['pod','Mevol X Pods','Mevol X Device']
-    },
-    {
-        name: 'Tanks',
-        synonyms: ['tank','clearomizer']
-    },
-    {
-        name: 'Starter Kits',
-        synonyms: ['starter', 'kit','disposable','GCORE MODELX','Icon Bar Hybrid']
-    },
-    {
-        name: 'Mods',
-        synonyms: ['boxes', 'boxmod', 'box mod', 'mod', 'box']
-    },
-    {
-        name: 'Batteries',
-        synonyms: ['battery', 'batteries','18650']
-    },
-    {
-        name: 'Chargers',
-        synonyms: ['charger','charging']
-    },
-    {
-        name: 'Replacement Glass',
-        synonyms: ['glass','replacement','pyrex','replacement glass']
-    },
-    {
-        name: 'Accessories/Miscellaneous',
-        synonyms: ['wire','drip tip','cotton','apparel','mod accessories','pens','wick','adapter','screwdriver','tweezer','decorative ring','magnet connector','vaper twizer']
-    },      
-],
-   execute_scrape:             false,
-   execute_inventory:          false
-}
+  //       run the web scraping function
+  //       save results to scraper/surreyvapes/products.JSON
+  execute_scrape:      true,
 
+  //      read products.JSON, clean the scraped products
+  //      save to scraper/inventory/surreyvapes.JSON    
+  execute_inventory:   true     
+}
 const ezvapes_config = {
-  //domain_platform: woo-commerce
-  domain:                    'https://ezvape.com',
-  data_dir:                  'ezvape',
-  log_file:                  'ezvape',
-  utils:                     require("./utils.js"),
-
-  //subscrapes
-  fetch_products:{
-    raw_products_file:        'raw_products',
-    //
-    exec_scrape:   false,
-  },
+  //      run the web scraping function to generate 3 files in scraper/ezvapes
+  //      products.JSON, brand_links.JSON, category_links.JSON
+  exec_scrape_products__category_brand_links:   true,
   
-  fetch_brand_ids:{
-    brand_links_file:       'brand_links',
-    b_product_ids_file:     'brand_product_ids',
-    brands_subdir:          'brands' ,
-    exec_scrape:   false,
-  },
+  //      read brand_links.JSON to generate crawlable links
+  //      run the web scraping function to generate brand_ids.JSON
+  exec_scrape_brand_ids:                        true,
   
-  fetch_category_ids:{
-    category_links_file:       'category_links',
-    c_product_ids_file:   'category_product_ids',
-    categories_subdir:    'categories',
-    exec_scrape: false,
-  },
-  ////////////////
-
-  write_inventory:{
-    inventory_file:           'ezvape',
-    //move buckets to another file
-    buckets: [
-      {
-          name: 'Juices',
-          synonyms: ['e-juice', //surreyvapes
-                    'ejuice',  //ezvape
-                    'e-liquid'] //tbvapes
-      },
-      {
-          name: 'Coils',
-          synonyms: ['coil','rda','atomizer','RPM 40 Pod','Ego 1 Coil 1.0 Ohm 5/Pk','Metal RDA Stand','Crown 5 Coil','Notch Coil SS316L 0.35 ohm 10/Pk']
-      },
-      {
-          name: 'Pods',
-          synonyms: ['pod',]
-      },
-      {
-          name: 'Tanks',
-          synonyms: ['tank','clearomizer']
-      },
-      {
-          name: 'Starter Kits',
-          synonyms: ['starter', 'kit','disposable','disposables']
-      },
-      {
-          name: 'Mods',
-          synonyms: ['boxes', 'boxmod', 'box mod', 'mod', 'box']
-      },
-      {
-          name: 'Batteries',
-          synonyms: ['battery', 'batteries','18650']
-      },
-      {
-          name: 'Chargers',
-          synonyms: ['charger','charging','lush q4 charger','evod usb charger','Intellicharger I4 V2 Li-Ion/Nimh','Battery Charger','Wall Adapter','Power Bank']
-      },
-      {
-          name: 'Replacement Glass',
-          synonyms: ['glass','replacement','pyrex','replacement glass']
-      },
-      {
-          name: 'Accessories/Miscellaneous',
-          synonyms: ['wire','drip tip','cotton','apparel','mod accessories','pens','wick','adapter', '30 mL Unicorn Bottle',
-          'screwdriver','tweezer','decorative ring','magnet connector','vaper twizer','diy tool kit','Clapton Coil Building Kit','Zipper Storage Bag','Mouthpiece Glass']
-      },      
-  ],
-    exec_inventory:         true,
-  },
+  //      read category_links.JSON to generate crawlable links,
+  //      run the web scraping function to generate category_ids.JSON
+  exec_scrape_category_ids:                     true,
+  
+  //      read products.JSON, brand_ids.JSON, category_ids.JSON,
+  //      add brand, category to matching products
+  //      clean the scraped products, save to scraper/inventory/ezvapes.JSON  
+  exec_inventory:                               true,
 }
-
-
 const inventory_config = {
-  log_file:                   'inventory',
-  write_collections_JSON:     true, //write validated collections to JSON files
-  write_local_db:             true, //true writes to local mongodb instance, false writes atlas instance, 
-  execute_db_write:           true  //true  
+  //write validated collections to JSON files in database/collections/(timestamp) dir 
+  write_collections_JSON:  true,
+
+  //true writes to local mongodb instance, false writes atlas instance,  
+  write_local_db:          true,
+
+   //true writes/overwrites collections in db
+  execute_db_write:        true 
 }
-
-
-
-
-
-
 
 Promise.all([
-     // require("./scripts/ezvape")(ezvapes_config), 
-     // require("./scripts/thunderbirdvapes")(tbvapes_config),
+      require("./scripts/ezvape")(ezvapes_config), 
+      require("./scripts/thunderbirdvapes")(tbvapes_config),
       require("./scripts/surreyvapes")(surreyvapes_config)
   ]).then( () => {
-     // require("./scripts/inventory")(inventory_config)
+      require("./scripts/inventory")(inventory_config)
   })
 
 
   /*
 execute scraping scripts and write inventory json to db upon completion
-- ezvape takes about 5 minutes to fully scrape
+- ezvape takes about 10 minutes to fully scrape
 */
 
 //change each part in this:
