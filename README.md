@@ -123,10 +123,11 @@ const inventory_config = {
 
 ## Potential Improvements
 
-- Instead of cleaning data manually with code, we could pass raw scrapes to data cleaning tools (or a web service such as https://trudo.ai)
-- E-juices could have flavours as a sub-category 
-- Clean up the brand names (GCORE, G-CORE, GCore should all be 'Gcore')
-- Save and self-host scraped images to minimize bandwidth usage for original image providers
+- Instead of cleaning, categorizing scraped products manually with code, we could pass raw scrapes as inputs to a data cleaning tool (or a web service such as https://trudo.ai) 
+- Use TypeScript to enforce strict type checking on function call inputs and return values
+- E-Juices could be sub-categorized across flavour types
+- Clean up the brand names (GCORE, G-CORE, GCore should all be 'Gcore'); this would deduplicate some brand names across vendors
+- Save and self-host scraped images to minimize bandwidth usage for original image providers (1500~ products with 15kB~ img size = 22.5~ mB raw storage)
 
 
 
